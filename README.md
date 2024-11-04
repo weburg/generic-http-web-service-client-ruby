@@ -24,7 +24,7 @@ engine = Engine.new
 engine.name = "RubyEngine"
 engine.cylinders = 44
 engine.throttle_setting = 49
-engine_id1 = http_web_service.create_engines(engine)
+engine_id1 = http_web_service.create_engines(engine: engine)
 ```
 
 ### Running the example

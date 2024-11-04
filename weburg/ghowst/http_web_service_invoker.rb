@@ -63,6 +63,11 @@ module WEBURG
         new_string
       end
 
+      def generate_qs(arguments)
+        # TODO all names should be ran through self.class.underbar_to_camel(name)
+        (arguments.length > 0 ? '?' + URI.encode_www_form(arguments.to_a) : "")
+      end
+
       public
 
       def invoke(method_name, arguments, base_url)
@@ -93,9 +98,13 @@ module WEBURG
 
         case verb
         when "get"
-          uri = URI(base_url + '/' + entity + (arguments.length > 0 ? "?id=" + URI.encode_www_form_component(arguments[0]) : ""))
+          uri = URI(base_url + '/' + entity + self.generate_qs(arguments))
+          request = Net::HTTP::Get.new(uri)
+          request[:accept] = "application/json"
 
-          result = Net::HTTP.get_response(uri)
+          result = Net::HTTP.start(uri.hostname, uri.port) do |http|
+            http.request(request)
+          end
 
           if result.is_a?(Net::HTTPOK)
             return JSON.parse(result.body, object_class: NameConvertingOpenStruct)
@@ -105,34 +114,47 @@ module WEBURG
         when "create"
           uri = URI(base_url + '/' + entity)
 
-          arg_hash = self.class.object_to_hash(arguments[0])
-
           has_file = false
-          arg_hash.each_value do |argument|
-            if argument.class == File
-              has_file = true
+          arguments.each_value do |argument|
+            self.class.object_to_hash(argument).each_value do |property|
+              if property.class == File
+                has_file = true
+              end
             end
           end
 
           request = Net::HTTP::Post.new(uri)
+          request[:accept] = "application/json"
 
           if !has_file
-            request.set_form_data arg_hash
+            values = []
+
+            arguments.each_value do |argument|
+              self.class.object_to_hash(argument).each do |name, property|
+                values << [self.class.underbar_to_camel(name), property]
+              end
+            end
+
+            request.set_form_data values
           else
             post_body = []
 
-            arg_hash.each do |name, argument|
-              if argument.class != File
-                post_body << "--#{MULTIPART_BOUNDARY}\r\n"
-                post_body << "Content-Disposition: form-data; name=\"#{name}\"\r\n";
-                post_body << "\r\n"
-                post_body << "#{argument}\r\n"
-              else
-                post_body << "--#{MULTIPART_BOUNDARY}\r\n"
-                post_body << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{File.basename(argument.path)}\"\r\n"
-                post_body << "Content-Type: application/octet-stream\r\n"
-                post_body << "\r\n"
-                post_body << argument.read
+            arguments.each_value do |argument|
+              self.class.object_to_hash(argument).each do |name, property|
+                name = self.class.underbar_to_camel(name)
+
+                if property.class != File
+                  post_body << "--#{MULTIPART_BOUNDARY}\r\n"
+                  post_body << "Content-Disposition: form-data; name=\"#{name}\"\r\n";
+                  post_body << "\r\n"
+                  post_body << "#{property}\r\n"
+                else
+                  post_body << "--#{MULTIPART_BOUNDARY}\r\n"
+                  post_body << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{File.basename(property.path)}\"\r\n"
+                  post_body << "Content-Type: application/octet-stream\r\n"
+                  post_body << "\r\n"
+                  post_body << property.read
+                end
               end
             end
 
@@ -152,12 +174,19 @@ module WEBURG
             raise "HTTP #{result.code} when requesting #{uri}"
           end
         when "create_or_replace"
-          uri = URI(base_url + '/' + entity + "?id=" + URI.encode_www_form_component(arguments[0].id))
+          uri = URI(base_url + '/' + entity)
 
-          arg_hash = self.class.object_to_hash(arguments[0])
+          values = []
+
+          arguments.each_value do |argument|
+            self.class.object_to_hash(argument).each do |name, property|
+              values << [self.class.underbar_to_camel(name), property]
+            end
+          end
 
           request = Net::HTTP::Put.new(uri)
-          request.set_form_data arg_hash
+          request[:accept] = "application/json"
+          request.set_form_data values
 
           result = Net::HTTP.start(uri.hostname, uri.port) do |http|
             http.request(request)
@@ -169,12 +198,19 @@ module WEBURG
             raise "HTTP #{result.code} when requesting #{uri}"
           end
         when "update"
-          uri = URI(base_url + '/' + entity + "?id=" + URI.encode_www_form_component(arguments[0].id))
+          uri = URI(base_url + '/' + entity)
 
-          arg_hash = self.class.object_to_hash(arguments[0])
+          values = []
+
+          arguments.each_value do |argument|
+            self.class.object_to_hash(argument).each do |name, property|
+              values << [self.class.underbar_to_camel(name), property]
+            end
+          end
 
           request = Net::HTTP::Patch.new(uri)
-          request.set_form_data arg_hash
+          request[:accept] = "application/json"
+          request.set_form_data values
 
           result = Net::HTTP.start(uri.hostname, uri.port) do |http|
             http.request(request)
@@ -186,9 +222,10 @@ module WEBURG
             raise "HTTP #{result.code} when requesting #{uri}"
           end
         when "delete"
-          uri = URI(base_url + '/' + entity + "?id=" + URI.encode_www_form_component(arguments[0]))
+          uri = URI(base_url + '/' + entity + self.generate_qs(arguments))
 
           request = Net::HTTP::Delete.new(uri)
+          request[:accept] = "application/json"
 
           result = Net::HTTP.start(uri.hostname, uri.port) do |http|
             http.request(request)
@@ -202,15 +239,17 @@ module WEBURG
         else
           # POST to a custom verb resource
 
-          uri = URI(base_url + '/' + entity + '/' + verb + (arguments.length > 0 && !(arguments[0].respond_to? :each) ? "?id=" + URI.encode_www_form_component(arguments[0]) : ""))
-          # TODO we assume id is passed but need to detect that more proper, custom verbs might pass different things
+          uri = URI(base_url + '/' + entity + '/' + verb)
 
           request = Net::HTTP::Post.new(uri)
+          request[:accept] = "application/json"
 
-          if arguments[0].respond_to? :each
-            arg_hash = self.class.object_to_hash(arguments[0])
-            request.set_form_data arg_hash
+          values = []
+          arguments.each do | name, value |
+            values << [ self.class.underbar_to_camel(name.to_s), value ]
           end
+
+          request.set_form_data values
 
           result = Net::HTTP.start(uri.hostname, uri.port) do |http|
             http.request(request)

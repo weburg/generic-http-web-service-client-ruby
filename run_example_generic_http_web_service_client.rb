@@ -10,7 +10,7 @@ http_web_service = WEBURG::GHOWST::GenericHTTPWebServiceClient.new("http://local
 photo = Photo.new
 photo.caption = "Some Ruby K"
 photo.photo_file = File.open("IMAG0777.jpg", 'rb')
-http_web_service.create_photos(photo)
+http_web_service.create_photos(photo: photo)
 
 ### Engine ###
 
@@ -19,7 +19,7 @@ engine = Engine.new
 engine.name = "RubyEngine"
 engine.cylinders = 44
 engine.throttle_setting = 49
-engine_id1 = http_web_service.create_engines(engine)
+engine_id1 = http_web_service.create_engines(engine: engine)
 
 # CreateOrReplace (which will create)
 engine = Engine.new
@@ -27,14 +27,14 @@ engine.id = -1
 engine.name = "RubyEngineCreatedNotReplaced"
 engine.cylinders = 45
 engine.throttle_setting = 50
-http_web_service.create_or_replace_engines(engine)
+http_web_service.create_or_replace_engines(engine: engine)
 
 # Prepare for CreateOrReplace
 engine = Engine.new
 engine.name = "RubyEngine2"
 engine.cylinders = 44
 engine.throttle_setting = 49
-engine_id2 = http_web_service.create_engines(engine)
+engine_id2 = http_web_service.create_engines(engine: engine)
 
 # CreateOrReplace (which will replace)
 engine = Engine.new
@@ -42,23 +42,23 @@ engine.id = engine_id2
 engine.name = "RubyEngine2Replacement"
 engine.cylinders = 56
 engine.throttle_setting = 59
-http_web_service.create_or_replace_engines(engine)
+http_web_service.create_or_replace_engines(engine: engine)
 
 # Prepare for Update
 engine = Engine.new
 engine.name = "RubyEngine3"
 engine.cylinders = 44
 engine.throttle_setting = 49
-engine_id3 = http_web_service.create_engines(engine)
+engine_id3 = http_web_service.create_engines(engine: engine)
 
 # Update
 engine = Engine.new
 engine.id = engine_id3
 engine.name = "RubyEngine3Updated"
-http_web_service.update_engines(engine)
+http_web_service.update_engines(engine: engine)
 
 # Get
-engine = http_web_service.get_engines(engine_id1)
+engine = http_web_service.get_engines(id: engine_id1)
 puts "Engine returned: #{engine.name}"
 
 # Get all
@@ -70,10 +70,10 @@ engine = Engine.new
 engine.name = "RubyEngine4ToDelete"
 engine.cylinders = 89
 engine.throttle_setting = 70
-engine_id4 = http_web_service.create_engines(engine)
+engine_id4 = http_web_service.create_engines(engine: engine)
 
 # Delete
-http_web_service.delete_engines(engine_id4)
+http_web_service.delete_engines(id: engine_id4)
 
 # Custom verb
-http_web_service.restart_engines(engine_id2)
+http_web_service.restart_engines(id: engine_id2)
