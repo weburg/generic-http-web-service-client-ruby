@@ -1,6 +1,6 @@
+require_relative 'weburg/ghowst/generic_http_web_service_client'
 require_relative 'engine'
 require_relative 'photo'
-require_relative 'weburg/ghowst/generic_http_web_service_client'
 
 http_web_service = WEBURG::GHOWST::GenericHTTPWebServiceClient.new("http://localhost:8081/generichttpws")
 
