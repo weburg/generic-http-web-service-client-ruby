@@ -96,37 +96,91 @@ module WEBURG
         puts "Verb: #{verb}"
         puts "Entity: #{entity}"
 
-        case verb
-        when "get"
-          uri = URI(base_url + '/' + entity + self.generate_qs(arguments))
-          request = Net::HTTP::Get.new(uri)
-          request[:accept] = "application/json"
+        begin
+          case verb
+          when "get"
+            uri = URI(base_url + '/' + entity + self.generate_qs(arguments))
+            request = Net::HTTP::Get.new(uri)
+            request[:accept] = "application/json"
 
-          result = Net::HTTP.start(uri.hostname, uri.port) do |http|
-            http.request(request)
-          end
+            result = Net::HTTP.start(uri.hostname, uri.port) do |http|
+              http.request(request)
+            end
 
-          if result.is_a?(Net::HTTPOK)
+            if result.code.to_i >= 400 or result.code.to_i < 200
+              raise HttpWebServiceException.new(result.code.to_i, result.header["x-error-message"])
+            elsif result.code.to_i >= 300 and result.code.to_i < 400
+              raise HttpWebServiceException.new(result.code.to_i, result.header["location"])
+            end
+
             return JSON.parse(result.body, object_class: NameConvertingOpenStruct)
-          else
-            raise "HTTP #{result.code} when requesting #{uri}"
-          end
-        when "create"
-          uri = URI(base_url + '/' + entity)
+          when "create"
+            uri = URI(base_url + '/' + entity)
 
-          has_file = false
-          arguments.each_value do |argument|
-            self.class.object_to_hash(argument).each_value do |property|
-              if property.class == File
-                has_file = true
+            has_file = false
+            arguments.each_value do |argument|
+              self.class.object_to_hash(argument).each_value do |property|
+                if property.class == File
+                  has_file = true
+                end
               end
             end
-          end
 
-          request = Net::HTTP::Post.new(uri)
-          request[:accept] = "application/json"
+            request = Net::HTTP::Post.new(uri)
+            request[:accept] = "application/json"
 
-          if !has_file
+            if !has_file
+              values = []
+
+              arguments.each_value do |argument|
+                self.class.object_to_hash(argument).each do |name, property|
+                  values << [self.class.underbar_to_camel(name), property]
+                end
+              end
+
+              request.set_form_data values
+            else
+              post_body = []
+
+              arguments.each_value do |argument|
+                self.class.object_to_hash(argument).each do |name, property|
+                  name = self.class.underbar_to_camel(name)
+
+                  if property.class != File
+                    post_body << "--#{MULTIPART_BOUNDARY}\r\n"
+                    post_body << "Content-Disposition: form-data; name=\"#{name}\"\r\n";
+                    post_body << "\r\n"
+                    post_body << "#{property}\r\n"
+                  else
+                    post_body << "--#{MULTIPART_BOUNDARY}\r\n"
+                    post_body << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{File.basename(property.path)}\"\r\n"
+                    post_body << "Content-Type: application/octet-stream\r\n"
+                    post_body << "\r\n"
+                    post_body << property.read
+                  end
+                end
+              end
+
+              post_body << "\r\n--#{MULTIPART_BOUNDARY}--\r\n"
+
+              request.set_content_type "multipart/form-data, boundary=#{MULTIPART_BOUNDARY}"
+              request.body = post_body.join
+            end
+
+            result = Net::HTTP.start(uri.hostname, uri.port) do |http|
+              http.request(request)
+            end
+
+            if result.code.to_i >= 400 or result.code.to_i < 200
+              raise HttpWebServiceException.new(result.code.to_i, result.header["x-error-message"])
+            elsif result.code.to_i >= 300 and result.code.to_i < 400
+              raise HttpWebServiceException.new(result.code.to_i, result.header["location"])
+            end
+
+            return JSON.parse(result.body, {:quirks_mode => true})
+          when "create_or_replace"
+            uri = URI(base_url + '/' + entity)
+
             values = []
 
             arguments.each_value do |argument|
@@ -135,131 +189,105 @@ module WEBURG
               end
             end
 
+            request = Net::HTTP::Put.new(uri)
+            request[:accept] = "application/json"
             request.set_form_data values
-          else
-            post_body = []
+
+            result = Net::HTTP.start(uri.hostname, uri.port) do |http|
+              http.request(request)
+            end
+
+            if result.code.to_i >= 400 or result.code.to_i < 200
+              raise HttpWebServiceException.new(result.code.to_i, result.header["x-error-message"])
+            elsif result.code.to_i >= 300 and result.code.to_i < 400
+              raise HttpWebServiceException.new(result.code.to_i, result.header["location"])
+            end
+
+            return JSON.parse(result.body, {:quirks_mode => true})
+          when "update"
+            uri = URI(base_url + '/' + entity)
+
+            values = []
 
             arguments.each_value do |argument|
               self.class.object_to_hash(argument).each do |name, property|
-                name = self.class.underbar_to_camel(name)
+                values << [self.class.underbar_to_camel(name), property]
+              end
+            end
 
-                if property.class != File
-                  post_body << "--#{MULTIPART_BOUNDARY}\r\n"
-                  post_body << "Content-Disposition: form-data; name=\"#{name}\"\r\n";
-                  post_body << "\r\n"
-                  post_body << "#{property}\r\n"
-                else
-                  post_body << "--#{MULTIPART_BOUNDARY}\r\n"
-                  post_body << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{File.basename(property.path)}\"\r\n"
-                  post_body << "Content-Type: application/octet-stream\r\n"
-                  post_body << "\r\n"
-                  post_body << property.read
+            request = Net::HTTP::Patch.new(uri)
+            request[:accept] = "application/json"
+            request.set_form_data values
+
+            result = Net::HTTP.start(uri.hostname, uri.port) do |http|
+              http.request(request)
+            end
+
+            if result.code.to_i >= 400 or result.code.to_i < 200
+              raise HttpWebServiceException.new(result.code.to_i, result.header["x-error-message"])
+            elsif result.code.to_i >= 300 and result.code.to_i < 400
+              raise HttpWebServiceException.new(result.code.to_i, result.header["location"])
+            end
+
+            return
+          when "delete"
+            uri = URI(base_url + '/' + entity + self.generate_qs(arguments))
+
+            request = Net::HTTP::Delete.new(uri)
+            request[:accept] = "application/json"
+
+            result = Net::HTTP.start(uri.hostname, uri.port) do |http|
+              http.request(request)
+            end
+
+            if result.code.to_i >= 400 or result.code.to_i < 200
+              raise HttpWebServiceException.new(result.code.to_i, result.header["x-error-message"])
+            elsif result.code.to_i >= 300 and result.code.to_i < 400
+              raise HttpWebServiceException.new(result.code.to_i, result.header["location"])
+            end
+
+            return
+          else
+            # POST to a custom verb resource
+
+            uri = URI(base_url + '/' + entity + '/' + verb)
+
+            request = Net::HTTP::Post.new(uri)
+            request[:accept] = "application/json"
+
+            values = []
+            arguments.each do | name, value |
+              if value.instance_variables.length == 0
+                values << [ self.class.underbar_to_camel(name.to_s), value ]
+              else
+                value.instance_variables.each do | property |
+                  values << [ self.class.underbar_to_camel(name.to_s + '.' + property.to_s.delete('@')), value.instance_variable_get(property) ]
                 end
               end
             end
 
-            post_body << "\r\n--#{MULTIPART_BOUNDARY}--\r\n"
+            request.set_form_data values
 
-            request.set_content_type "multipart/form-data, boundary=#{MULTIPART_BOUNDARY}"
-            request.body = post_body.join
-          end
+            result = Net::HTTP.start(uri.hostname, uri.port) do |http|
+              http.request(request)
+            end
 
-          result = Net::HTTP.start(uri.hostname, uri.port) do |http|
-            http.request(request)
-          end
+            if result.code.to_i >= 400 or result.code.to_i < 200
+              raise HttpWebServiceException.new(result.code.to_i, result.header["x-error-message"])
+            elsif result.code.to_i >= 300 and result.code.to_i < 400
+              raise HttpWebServiceException.new(result.code.to_i, result.header["location"])
+            end
 
-          if result.is_a?(Net::HTTPOK) || result.is_a?(Net::HTTPCreated)
-            return JSON.parse(result.body, {:quirks_mode => true})
-          else
-            raise "HTTP #{result.code} when requesting #{uri}"
-          end
-        when "create_or_replace"
-          uri = URI(base_url + '/' + entity)
-
-          values = []
-
-          arguments.each_value do |argument|
-            self.class.object_to_hash(argument).each do |name, property|
-              values << [self.class.underbar_to_camel(name), property]
+            begin
+              return JSON.parse(result.body, {:quirks_mode => true})
+            rescue
+              return
             end
           end
-
-          request = Net::HTTP::Put.new(uri)
-          request[:accept] = "application/json"
-          request.set_form_data values
-
-          result = Net::HTTP.start(uri.hostname, uri.port) do |http|
-            http.request(request)
-          end
-
-          if result.is_a?(Net::HTTPOK) || result.is_a?(Net::HTTPCreated)
-            return JSON.parse(result.body, {:quirks_mode => true})
-          else
-            raise "HTTP #{result.code} when requesting #{uri}"
-          end
-        when "update"
-          uri = URI(base_url + '/' + entity)
-
-          values = []
-
-          arguments.each_value do |argument|
-            self.class.object_to_hash(argument).each do |name, property|
-              values << [self.class.underbar_to_camel(name), property]
-            end
-          end
-
-          request = Net::HTTP::Patch.new(uri)
-          request[:accept] = "application/json"
-          request.set_form_data values
-
-          result = Net::HTTP.start(uri.hostname, uri.port) do |http|
-            http.request(request)
-          end
-
-          if result.is_a?(Net::HTTPOK) || result.is_a?(Net::HTTPCreated)
-            return
-          else
-            raise "HTTP #{result.code} when requesting #{uri}"
-          end
-        when "delete"
-          uri = URI(base_url + '/' + entity + self.generate_qs(arguments))
-
-          request = Net::HTTP::Delete.new(uri)
-          request[:accept] = "application/json"
-
-          result = Net::HTTP.start(uri.hostname, uri.port) do |http|
-            http.request(request)
-          end
-
-          if result.is_a?(Net::HTTPOK)
-            return
-          else
-            raise "HTTP #{result.code} when requesting #{uri}"
-          end
-        else
-          # POST to a custom verb resource
-
-          uri = URI(base_url + '/' + entity + '/' + verb)
-
-          request = Net::HTTP::Post.new(uri)
-          request[:accept] = "application/json"
-
-          values = []
-          arguments.each do | name, value |
-            values << [ self.class.underbar_to_camel(name.to_s), value ]
-          end
-
-          request.set_form_data values
-
-          result = Net::HTTP.start(uri.hostname, uri.port) do |http|
-            http.request(request)
-          end
-
-          if result.is_a?(Net::HTTPOK) || result.is_a?(Net::HTTPCreated)
-            return
-          else
-            raise "HTTP #{result.code} when requesting #{uri}"
-          end
+        rescue HttpWebServiceException => e
+          raise e
+        rescue Exception => e
+          raise HttpWebServiceException.new(500, "There was a problem processing the web service request: " + e.message)
         end
       end
     end
