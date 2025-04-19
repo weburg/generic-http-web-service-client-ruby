@@ -287,7 +287,7 @@ module WEBURG
         rescue HttpWebServiceException => e
           raise e
         rescue Exception => e
-          raise HttpWebServiceException.new(500, "There was a problem processing the web service request: " + e.message)
+          raise HttpWebServiceException.new(0, "There was a problem processing the web service request: " + e.message)
         end
       end
     end
