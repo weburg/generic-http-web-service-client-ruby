@@ -132,9 +132,9 @@ module WEBURG
             if !has_file
               values = []
 
-              arguments.each_value do |argument|
-                self.class.object_to_hash(argument).each do |name, property|
-                  values << [self.class.underbar_to_camel(name), property]
+              arguments.each do | name, value |
+                value.instance_variables.each do | property |
+                  values << [ self.class.underbar_to_camel(name.to_s + '.' + property.to_s.delete('@')), value.instance_variable_get(property) ]
                 end
               end
 
@@ -142,21 +142,21 @@ module WEBURG
             else
               post_body = []
 
-              arguments.each_value do |argument|
-                self.class.object_to_hash(argument).each do |name, property|
-                  name = self.class.underbar_to_camel(name)
+              arguments.each do | argument, value |
+                value.instance_variables.each do | property |
+                  name = self.class.underbar_to_camel(argument.to_s + '.' + property.to_s.delete('@'))
 
-                  if property.class != File
+                  if value.instance_variable_get(property).class != File
                     post_body << "--#{MULTIPART_BOUNDARY}\r\n"
                     post_body << "Content-Disposition: form-data; name=\"#{name}\"\r\n";
                     post_body << "\r\n"
-                    post_body << "#{property}\r\n"
+                    post_body << "#{value.instance_variable_get(property)}\r\n"
                   else
                     post_body << "--#{MULTIPART_BOUNDARY}\r\n"
-                    post_body << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{File.basename(property.path)}\"\r\n"
+                    post_body << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{File.basename(value.instance_variable_get(property).path)}\"\r\n"
                     post_body << "Content-Type: application/octet-stream\r\n"
                     post_body << "\r\n"
-                    post_body << property.read
+                    post_body << value.instance_variable_get(property).read
                   end
                 end
               end
@@ -183,9 +183,9 @@ module WEBURG
 
             values = []
 
-            arguments.each_value do |argument|
-              self.class.object_to_hash(argument).each do |name, property|
-                values << [self.class.underbar_to_camel(name), property]
+            arguments.each do | name, value |
+              value.instance_variables.each do | property |
+                values << [ self.class.underbar_to_camel(name.to_s + '.' + property.to_s.delete('@')), value.instance_variable_get(property) ]
               end
             end
 
@@ -209,9 +209,9 @@ module WEBURG
 
             values = []
 
-            arguments.each_value do |argument|
-              self.class.object_to_hash(argument).each do |name, property|
-                values << [self.class.underbar_to_camel(name), property]
+            arguments.each do | name, value |
+              value.instance_variables.each do | property |
+                values << [ self.class.underbar_to_camel(name.to_s + '.' + property.to_s.delete('@')), value.instance_variable_get(property) ]
               end
             end
 
