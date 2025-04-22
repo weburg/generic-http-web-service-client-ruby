@@ -1,5 +1,6 @@
 require 'json'
 require 'net/http'
+require_relative 'http_web_service_exception'
 
 module WEBURG
   module GHOWST
