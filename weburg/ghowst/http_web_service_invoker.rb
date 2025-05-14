@@ -149,7 +149,8 @@ module WEBURG
 
                   if value.instance_variable_get(property).class != File
                     post_body << "--#{MULTIPART_BOUNDARY}\r\n"
-                    post_body << "Content-Disposition: form-data; name=\"#{name}\"\r\n";
+                    post_body << "Content-Disposition: form-data; name=\"#{name}\"\r\n"
+                    post_body << "Content-Type: text/plain\r\n"
                     post_body << "\r\n"
                     post_body << "#{value.instance_variable_get(property)}\r\n"
                   else
@@ -164,7 +165,7 @@ module WEBURG
 
               post_body << "\r\n--#{MULTIPART_BOUNDARY}--\r\n"
 
-              request.set_content_type "multipart/form-data, boundary=#{MULTIPART_BOUNDARY}"
+              request.set_content_type "multipart/form-data; boundary=#{MULTIPART_BOUNDARY}"
               request.body = post_body.join
             end
 
