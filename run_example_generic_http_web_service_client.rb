@@ -1,18 +1,18 @@
 require_relative 'weburg/ghowst/generic_http_web_service_client'
 require_relative 'engine'
-require_relative 'photo'
+require_relative 'image'
 require_relative 'sound'
 require_relative 'truck'
 
 http_web_service = WEBURG::GHOWST::GenericHTTPWebServiceClient.new("http://localhost:8081/generichttpws")
 
-### Photo ###
+### Image ###
 
 # Create
-photo = Photo.new
-photo.caption = "Some Ruby K"
-photo.photo_file = File.open("IMAG0777.jpg", 'rb')
-http_web_service.create_photos(photo: photo)
+image = Image.new
+image.caption = "Some Ruby K"
+image.image_file = File.open("IMAG0777.jpg", 'rb')
+http_web_service.create_images(image: image)
 
 ### Engine ###
 
