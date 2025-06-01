@@ -8,7 +8,7 @@ module WEBURG
 
       def initialize(base_url)
         @base_url = base_url
-        @http_web_service_invoker = HTTPWebServiceInvoker.new()
+        @http_web_service_invoker = HTTPWebServiceInvoker.new
       end
 
       def method_missing(method, **arguments, &block)
