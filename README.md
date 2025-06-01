@@ -42,3 +42,13 @@ If using an IDE, you should only need to run the below file:
 
 The example runs several calls to create, update, replace, read, delete, and do
 a custom action on resources.
+
+### Running the tests
+
+To run unit tests only:
+
+`rake`
+
+To run unit and integration tests:
+
+`rake test verify`
