@@ -7,6 +7,10 @@ class GenericHTTPWebServiceClientTest < Minitest::Test
     @test_web_service = WEBURG::GHOWST::GenericHTTPWebServiceClient.new("http://localhost:8081/generichttpws")
   end
 
+  def test_example_generic_http_web_service_client
+    require_relative '../../run_example_generic_http_web_service_client'
+  end
+
   def test_create_engine
     engine = Engine.new
     engine.name = "RubyTestEngine"
