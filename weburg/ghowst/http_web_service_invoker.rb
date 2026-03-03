@@ -1,4 +1,5 @@
 require 'json'
+require 'logger'
 require 'net/http'
 require_relative 'http_web_service_exception'
 
@@ -7,6 +8,7 @@ module WEBURG
     class HTTPWebServiceInvoker
       private
 
+      LOGGER = Logger.new($stderr)
       MULTIPART_BOUNDARY = "AaB03x"
 
       class NameConvertingOpenStruct < OpenStruct
@@ -16,7 +18,7 @@ module WEBURG
         end
       end
 
-      def self.get_entity_name(name, verb)
+      def self.get_resource_name(name, verb)
         name.slice(verb.length + 1, name.length).downcase
       end
 
@@ -74,33 +76,33 @@ module WEBURG
       def invoke(method_name, arguments, base_url)
         if method_name.index("get") == 0
           verb = "get"
-          entity = self.class.get_entity_name(method_name, verb)
+          resource = self.class.get_resource_name(method_name, verb)
         elsif method_name.index("create_or_replace") == 0
           verb = "create_or_replace"
-          entity = self.class.get_entity_name(method_name, verb)
+          resource = self.class.get_resource_name(method_name, verb)
         elsif method_name.index("create") == 0
           verb = "create"
-          entity = self.class.get_entity_name(method_name, verb)
+          resource = self.class.get_resource_name(method_name, verb)
         elsif method_name.index("update") == 0
           verb = "update"
-          entity = self.class.get_entity_name(method_name, verb)
+          resource = self.class.get_resource_name(method_name, verb)
         elsif method_name.index("delete") == 0
           verb = "delete"
-          entity = self.class.get_entity_name(method_name, verb)
+          resource = self.class.get_resource_name(method_name, verb)
         else
           parts = method_name.split('_')
 
           verb = parts[0].downcase
-          entity =  self.class.get_entity_name(method_name, verb)
+          resource =  self.class.get_resource_name(method_name, verb)
         end
 
-        puts "Verb: #{verb}"
-        puts "Entity: #{entity}"
+        LOGGER.info("Verb: #{verb}")
+        LOGGER.info("Resource: #{resource}")
 
         begin
           case verb
           when "get"
-            uri = URI(base_url + '/' + entity + self.generate_qs(arguments))
+            uri = URI(base_url + '/' + resource + self.generate_qs(arguments))
             request = Net::HTTP::Get.new(uri)
             request[:accept] = "application/json"
 
@@ -116,7 +118,7 @@ module WEBURG
 
             return JSON.parse(result.body, object_class: NameConvertingOpenStruct)
           when "create"
-            uri = URI(base_url + '/' + entity)
+            uri = URI(base_url + '/' + resource)
 
             has_file = false
             arguments.each_value do |argument|
@@ -181,7 +183,7 @@ module WEBURG
 
             return JSON.parse(result.body, {:quirks_mode => true})
           when "create_or_replace"
-            uri = URI(base_url + '/' + entity)
+            uri = URI(base_url + '/' + resource)
 
             values = []
 
@@ -207,7 +209,7 @@ module WEBURG
 
             return JSON.parse(result.body, {:quirks_mode => true})
           when "update"
-            uri = URI(base_url + '/' + entity)
+            uri = URI(base_url + '/' + resource)
 
             values = []
 
@@ -233,7 +235,7 @@ module WEBURG
 
             return
           when "delete"
-            uri = URI(base_url + '/' + entity + self.generate_qs(arguments))
+            uri = URI(base_url + '/' + resource + self.generate_qs(arguments))
 
             request = Net::HTTP::Delete.new(uri)
             request[:accept] = "application/json"
@@ -252,7 +254,7 @@ module WEBURG
           else
             # POST to a custom verb resource
 
-            uri = URI(base_url + '/' + entity + '/' + verb)
+            uri = URI(base_url + '/' + resource + '/' + verb)
 
             request = Net::HTTP::Post.new(uri)
             request[:accept] = "application/json"
