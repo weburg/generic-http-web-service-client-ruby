@@ -1,6 +1,7 @@
 require 'json'
 require 'logger'
 require 'net/http'
+require 'ostruct'
 require_relative 'http_web_service_exception'
 
 module WEBURG
