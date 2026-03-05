@@ -30,7 +30,8 @@ engine_id1 = http_web_service.create_engines(engine: engine)
 ### Running the example
 
 First, ensure the server is running. Refer to other grouped GHoWSt projects to
-get and run the server. Ensure Ruby 3 or better is installed.
+get and run the server. Ensure Ruby 3 or better is installed. Finally, make sure
+the required bundler gems are installed.
 
 If using the CLI, ensure you are in the project directory. Run:
 
