@@ -1,5 +1,7 @@
 # Generic HTTP Web Service Client in Ruby (GHoWSt)
 
+![Logo](http://www.weburg.com/ghowst/images/ghowstlogo.png)
+
 ## A client written to talk to the Generic HTTP Web Service Server
 
 ### Design goals
@@ -27,11 +29,15 @@ engine.throttle_setting = 49
 engine_id1 = http_web_service.create_engines(engine: engine)
 ```
 
+### Setup
+
+Ensure Ruby 3 or better is installed. Then, make sure the required bundler gems
+are installed.
+
 ### Running the example
 
 First, ensure the server is running. Refer to other grouped GHoWSt projects to
-get and run the server. Ensure Ruby 3 or better is installed. Finally, make sure
-the required bundler gems are installed.
+get and run the server.
 
 If using the CLI, ensure you are in the project directory. Run:
 
