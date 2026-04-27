@@ -25,7 +25,7 @@ module WEBURG
 
       def self.object_to_hash(object)
         hash = {}
-        object.instance_variables.each do |var|
+        object.instance_variables.each do | var |
           hash[underbar_to_camel var.to_s.delete("@")] = object.instance_variable_get(var)
         end
 
@@ -36,7 +36,7 @@ module WEBURG
         new_string = ''
 
         upper_next = false
-        string.each_char do |char|
+        string.each_char do | char |
           if char == '_'
             upper_next = true
             next
@@ -56,7 +56,7 @@ module WEBURG
       def self.camel_to_underbar(string)
         new_string = ''
 
-        string.each_char do |char|
+        string.each_char do | char |
           if new_string != '' and char.match /[[:upper:]]/
             new_string += "_#{char.downcase}"
           else
@@ -68,16 +68,27 @@ module WEBURG
       end
 
       def self.generate_qs(arguments)
-        # TODO all names should be ran through self.class.underbar_to_camel(name)
-        (arguments.length > 0 ? '?' + URI.encode_www_form(arguments.to_a) : "")
+        qs = ''
+        if arguments.length > 0
+          qs += '?'
+
+          renamed_arguments = []
+          arguments.each do | name, value |
+            renamed_arguments << [ self.underbar_to_camel(name.to_s), value ]
+          end
+
+          qs += URI.encode_www_form(renamed_arguments.to_a)
+        end
+
+        qs
       end
 
       def self.prepare_request(request, arguments)
         request[:accept] = "application/json"
 
         has_file = false
-        arguments.each_value do |argument|
-          self.object_to_hash(argument).each_value do |property|
+        arguments.each_value do | argument |
+          self.object_to_hash(argument).each_value do | property |
             if property.class == File
               has_file = true
               break 2
