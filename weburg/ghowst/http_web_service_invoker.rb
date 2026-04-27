@@ -1,5 +1,6 @@
 require 'json'
 require 'logger'
+require 'http/form_data'
 require 'net/http'
 require 'ostruct'
 require_relative 'http_web_service_exception'
@@ -10,7 +11,6 @@ module WEBURG
       private
 
       LOGGER = Logger.new($stderr)
-      MULTIPART_BOUNDARY = "AaB03x"
 
       class NameConvertingOpenStruct < OpenStruct
         def method_missing(method, *arguments, &block)
@@ -99,37 +99,35 @@ module WEBURG
 
           request.set_form_data values
         else
-          post_body = []
+          values = {}
 
           arguments.each do | argument, value |
             value.instance_variables.each do | property |
               name = self.underbar_to_camel(argument.to_s + '.' + property.to_s.delete('@'))
+              property_value = value.instance_variable_get(property)
 
-              if value.instance_variable_get(property).class != File
-                post_body << "--#{MULTIPART_BOUNDARY}\r\n"
-                post_body << "Content-Disposition: form-data; name=\"#{name}\"\r\n"
-                post_body << "Content-Type: text/plain\r\n"
-                post_body << "\r\n"
-                post_body << "#{value.instance_variable_get(property)}\r\n"
-              else
-                post_body << "--#{MULTIPART_BOUNDARY}\r\n"
-                post_body << "Content-Disposition: form-data; name=\"#{name}\"; filename=\"#{File.basename(value.instance_variable_get(property).path)}\"\r\n"
-                post_body << "Content-Type: application/octet-stream\r\n"
-                post_body << "\r\n"
-                post_body << value.instance_variable_get(property).read
-              end
+              values[name] =
+                if property_value.class == File
+                  HTTP::FormData::File.new(
+                    property_value,
+                    filename: File.basename(property_value.path),
+                    content_type: "application/octet-stream"
+                  )
+                else
+                  property_value.to_s
+                end
             end
           end
 
-          post_body << "\r\n--#{MULTIPART_BOUNDARY}--\r\n"
+          form = HTTP::FormData.create(values)
 
-          request.set_content_type "multipart/form-data; boundary=#{MULTIPART_BOUNDARY}"
-          request.body = post_body.join
+          request.set_content_type(form.content_type)
+          request.body = form.to_s
         end
       end
 
       def self.execute_and_handle_result(request, uri, json_quirks_mode = true)
-        result = Net::HTTP.start(uri.hostname, uri.port) do |http|
+        result = Net::HTTP.start(uri.hostname, uri.port) do | http |
           http.request(request)
         end
 
