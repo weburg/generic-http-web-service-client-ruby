@@ -1,6 +1,6 @@
 # Generic HTTP Web Service Client in Ruby (GHoWSt)
 
-![Logo](http://www.weburg.com/ghowst/images/ghowstlogo.png)
+![Logo](https://www.weburg.com/ghowst/images/ghowstlogo.png)
 
 ## A client written to talk to the Generic HTTP Web Service Server
 
